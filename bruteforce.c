@@ -25,7 +25,7 @@ void encrypt(long key, char *ciph, int len)
   DES_ecb_encrypt((DES_cblock *)ciph, (DES_cblock *)ciph, &schedule, DES_ENCRYPT);
 }
 
-char search[] = " REYES ";
+char search[] = " Parte ";
 int tryKey(long key, char *ciph, int len)
 {
   char temp[len + 1];
@@ -35,7 +35,7 @@ int tryKey(long key, char *ciph, int len)
   return strstr((char *)temp, search) != NULL;
 }
 
-unsigned char cipher[] = {31, 94, 26, 11, 83, 154, 71, 249, 69, 83, 32, 109, 97, 109, 97, 32, 98, 105, 99, 104, 111};
+unsigned char cipher[] = {110, 171, 24, 144, 61, 251, 15, 43, 97, 114, 116, 101, 32, 49};
 
 int main(int argc, char *argv[])
 { // char **argv
@@ -88,6 +88,6 @@ int main(int argc, char *argv[])
     MPI_Wait(&req, &st);
     decrypt(found, (char *)cipher, ciphlen);
     printf("%li %s\n", found, cipher);
-    }
+  }
   MPI_Finalize();
 }
