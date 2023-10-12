@@ -131,17 +131,9 @@ int main(int argc, char *argv[])
     char *word = random_word(cipher);
     char *search = random_word(cipher);
     // char search[] = " Parte ";
-    printf("Key: %li\n", key);
-    printf("Search: %s\n", search);
 
     // encriptar el texto con la clave
     encrypt(key, cipher, strlen(cipher));
-
-    printf("Encrypted text: ");
-    for (int i = 0; i < strlen(cipher); i++)
-    {
-        printf("%d, ", (unsigned char)cipher[i]);
-    }
 
     int flag;
     int ciphlen = strlen(cipher);
@@ -156,10 +148,17 @@ int main(int argc, char *argv[])
     int range_per_node = upper / N;
     mylower = range_per_node * id;
     myupper = range_per_node * (id + 1) - 1;
-    printf("Node %d: %li - %li\n", id, mylower, myupper);
+    // printf("Node %d: %li - %li\n", id, mylower, myupper);
 
     if (id == N - 1)
     {
+        printf("Key: %li\n", key);
+        printf("Search: %s\n", search);
+        printf("Encrypted text: ");
+        for (int i = 0; i < strlen(cipher); i++)
+        {
+            printf("%d, ", (unsigned char)cipher[i]);
+        }
         myupper = upper;
     }
     long found = 0;
