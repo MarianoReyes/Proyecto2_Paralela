@@ -13,12 +13,6 @@
 ### bruteforce2.c
 
 - mpicc bruteforce2.c -o bruteforce2 -lssl -lcrypto
-<<<<<<< Updated upstream
-- mpirun -np 4 ./bruteforce2 123456L input.txt 
-- mpirun -np 4 ./bruteforce2 18014398509481983L input.txt 
-- mpirun -np 4 ./bruteforce2 18014398509481984L input.txt 
-- mpirun -np 4 ./bruteforce2 < key > < text_input.txt >
-=======
 - mpirun -np 4 ./bruteforce2 <key> <text_input.txt>
 - mpirun -np 4 ./bruteforce2 18014398509481984L input.txt
 
@@ -27,4 +21,3 @@
 - mpicc -o rainbow rainbow.c -lcrypto
 - mpirun -np <number_of_processes> ./rainbow <key> <file.txt>
 - mpirun -np 4 ./rainbow 123456 input.txt
->>>>>>> Stashed changes
