@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
     MPI_Request req;
     FILE *file;
     char cipher[1000];
+    double start, end;
 
     if (argc < 3)
     {
@@ -124,7 +125,7 @@ int main(int argc, char *argv[])
     fclose(file);
 
     cipher[strcspn(cipher, "\n")] = 0; // Elimina el salto de línea
-    printf("Texto original: %s\n", cipher);
+    // printf("Texto original: %s\n", cipher);
 
     long key = strtol(argv[1], NULL, 10); // convierte la cadena de la clave a long
 
@@ -141,16 +142,18 @@ int main(int argc, char *argv[])
     // Hacer que text sea el nuevo cipher
 
     MPI_Comm comm = MPI_COMM_WORLD;
-    MPI_Init(NULL, NULL);
+    MPI_Init(&argc, &argv);
+    start = MPI_Wtime();
     MPI_Comm_size(comm, &N);
     MPI_Comm_rank(comm, &id);
 
     int range_per_node = upper / N;
-    mylower = range_per_node * id;
-    myupper = range_per_node * (id + 1) - 1;
-    // printf("Node %d: %li - %li\n", id, mylower, myupper);
 
-    if (id == N - 1)
+    mylower = (upper / N) * id;
+    myupper = (upper / N) * (id + 1) - 1;
+    // printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
+
+    if (id == 0)
     {
         printf("Key: %li\n", key);
         printf("Search: %s\n", search);
@@ -159,24 +162,32 @@ int main(int argc, char *argv[])
         {
             printf("%d, ", (unsigned char)cipher[i]);
         }
+        printf("\n");
+    }
+    if (id == N - 1)
+    {
+
         myupper = upper;
     }
     long found = 0;
     MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
-
-    for (int i = mylower; i < myupper; ++i)
+    printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
+    for (long i = mylower; i < myupper; ++i)
     {
+
+        MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+        if (flag)
+            break;
+
         if (tryKey(i, (char *)cipher, ciphlen, search))
         {
             found = i;
-
-            MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
-            if (flag)
-                break;
-
             printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
+
+            // printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
             for (int node = 0; node < N; node++)
             {
+                // printf("Node %d: AVISANDO NODE %d - FOUND - %li\n", id, node, found);
                 MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
             }
             break;
@@ -187,6 +198,11 @@ int main(int argc, char *argv[])
         MPI_Wait(&req, &st);
         decrypt(found, (char *)cipher, ciphlen);
         printf("%li %s\n", found, cipher);
+    }
+    end = MPI_Wtime();
+    if (id == 0)
+    {
+        printf("El programa MPI tardó %f segundos en ejecutarse.\n", end - start);
     }
     MPI_Finalize();
 }

@@ -13,5 +13,7 @@
 
 ### bruteforce2.c
 - mpicc bruteforce2.c -o bruteforce2 -lssl -lcrypto
+- mpirun -np 4 ./bruteforce2 123456L input.txt 
+- mpirun -np 4 ./bruteforce2 18014398509481983L input.txt 
 - mpirun -np 4 ./bruteforce2 18014398509481984L input.txt 
 - mpirun -np 4 ./bruteforce2 < key > < text_input.txt >
