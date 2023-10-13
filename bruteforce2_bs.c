@@ -152,8 +152,6 @@ int main(int argc, char *argv[])
     // Cifra el texto con la clave
     encrypt(key, cipher, strlen(cipher));
 
-    printf("Texto cifrado: %s\n", cipher);
-
     int flag;
     int ciphlen = strlen(cipher);
 
@@ -162,6 +160,16 @@ int main(int argc, char *argv[])
     start = MPI_Wtime();
     MPI_Comm_size(comm, &N);
     MPI_Comm_rank(comm, &id);
+
+    if (id == 0)
+    {
+        printf("Encrypted text: ");
+        for (int i = 0; i < strlen(cipher); i++)
+        {
+            printf("%d, ", (unsigned char)cipher[i]);
+        }
+        printf("\n");
+    }
 
     long found = 0;
 
@@ -190,7 +198,7 @@ int main(int argc, char *argv[])
         MPI_Wait(&req, &st);
         if (found > 0)
         {
-            decrypt(found, (char *)cipher, ciphlen);
+            decrypt(found, cipher, ciphlen);
             printf("Clave encontrada: %li\n", found);
             printf("Término buscado: %s\n", search);
             printf("Texto descifrado: %s\n", cipher);

@@ -161,6 +161,16 @@ int main(int argc, char *argv[])
         myupper = upper;
     }
 
+    if (id == 0)
+    {
+        printf("Encrypted text: ");
+        for (int i = 0; i < strlen(cipher); i++)
+        {
+            printf("%d, ", (unsigned char)cipher[i]);
+        }
+        printf("\n");
+    }
+
     long found = 0; // Variable para almacenar la clave encontrada.
     MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
     // Inicia una recepción asincrónica para recibir una clave encontrada desde cualquier otro nodo.
