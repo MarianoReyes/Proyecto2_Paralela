@@ -57,6 +57,7 @@ int count_words(const char *text)
 }
 
 // Devuelve una palabra aleatoria de la cadena
+// Recibe una cadena de varias palabras separadas por espacios
 char *random_word(char *text)
 {
     int n_words = count_words(text);
