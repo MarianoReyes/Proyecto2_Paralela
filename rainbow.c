@@ -28,17 +28,23 @@ void build_rainbow_table()
     }
 }
 
-// Función para buscar en la tabla de arcoíris
-long lookup_rainbow_table(unsigned char *encrypted_value)
+// Función para buscar en la tabla de arcoíris con una llave especifica
+long lookup_rainbow_table(char *cipher, int cyphlen, char *search)
 {
     for (long i = 0; i < TABLE_SIZE; ++i)
     {
-        if (memcmp(table[i].encrypted, encrypted_value, 8) == 0)
+        // Decrypt the current encrypted value using the table key
+        char decrypted[1000]; // Adjust the size accordingly
+        strcpy(decrypted, cipher);
+        decrypt(table[i].key, decrypted, cyphlen);
+
+        // Check if the decrypted value contains the search word
+        if (strstr(decrypted, search) != NULL)
         {
             return table[i].key;
         }
     }
-    return -1; // No encontrado en la tabla
+    return -1; // Not found in the table
 }
 
 // Función para descifrar utilizando la clave DES
@@ -154,8 +160,22 @@ int main(int argc, char *argv[])
 
     long key = strtol(argv[1], NULL, 10); // Convierte la cadena de la clave a long
 
+    char *word = random_word(cipher);
+    char *search = random_word(cipher);
+
     // Construir la tabla de arcoíris
     build_rainbow_table();
+
+    // Imprimir el contenido de la tabla
+    // for (long i = 0; i < TABLE_SIZE; ++i)
+    // {
+    //     printf("Entry %ld: Key = %ld, Encrypted = ", i, table[i].key);
+    //     for (int j = 0; j < 8; ++j)
+    //     {
+    //         printf("%02x", table[i].encrypted[j]);
+    //     }
+    //     printf("\n");
+    // }
 
     int flag;
     int ciphlen = strlen(cipher);
@@ -178,7 +198,7 @@ int main(int argc, char *argv[])
     }
 
     // buscar en la tabla rainbow
-    long found_key = lookup_rainbow_table((unsigned char *)cipher);
+    long found_key = lookup_rainbow_table((unsigned char *)cipher, ciphlen, search);
 
     if (found_key != -1) // si se encontro
     {
