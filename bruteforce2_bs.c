@@ -130,12 +130,14 @@ int main(int argc, char *argv[])
     char cipher[1000];
     double start, end;
 
+    // uso
     if (argc < 3)
     {
         printf("Uso: %s <clave> <archivo.txt>\n", argv[0]);
         exit(1);
     }
 
+    // lectura de archivo
     file = fopen(argv[2], "r");
     if (file == NULL)
     {
@@ -168,6 +170,7 @@ int main(int argc, char *argv[])
     mylower = (upper / N) * id;
     myupper = (upper / N) * (id + 1) - 1;
 
+    // impresion de texto cifrado
     if (id == 0)
     {
         printf("Key: %li\n", key);
@@ -189,6 +192,7 @@ int main(int argc, char *argv[])
     MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
     printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
 
+    // aqui se realiza la busqueda binaria
     found = binarySearchKey(mylower, myupper, cipher, ciphlen, search);
 
     if (found >= 0)
@@ -201,6 +205,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    // nodo maestro se encarga
     if (id == 0)
     {
         MPI_Wait(&req, &st);
