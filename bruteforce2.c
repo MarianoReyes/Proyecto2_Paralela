@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <openssl/des.h>
 
+// Función para desencriptar datos utilizando DES
 void decrypt(long key, char *ciph, int len)
 {
     DES_key_schedule schedule;
@@ -16,6 +17,7 @@ void decrypt(long key, char *ciph, int len)
     DES_ecb_encrypt((DES_cblock *)ciph, (DES_cblock *)ciph, &schedule, DES_DECRYPT);
 }
 
+// Función para encriptar datos utilizando DES
 void encrypt(long key, char *ciph, int len)
 {
     DES_key_schedule schedule;
@@ -25,6 +27,7 @@ void encrypt(long key, char *ciph, int len)
     DES_ecb_encrypt((DES_cblock *)ciph, (DES_cblock *)ciph, &schedule, DES_ENCRYPT);
 }
 
+// Función para probar una clave en el cifrado
 int tryKey(long key, char *ciph, int len, char *search)
 {
     char temp[len + 1];
@@ -34,6 +37,7 @@ int tryKey(long key, char *ciph, int len, char *search)
     return strstr((char *)temp, search) != NULL;
 }
 
+// Función para contar palabras en un texto
 int count_words(const char *text)
 {
     int count = 0;
@@ -56,7 +60,7 @@ int count_words(const char *text)
     return count;
 }
 
-// Devuelve una palabra aleatoria de la cadena
+// Función para obtener una palabra aleatoria de un texto
 char *random_word(char *text)
 {
     int n_words = count_words(text);
