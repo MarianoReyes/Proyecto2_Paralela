@@ -5,28 +5,30 @@
 #include <unistd.h>
 #include <openssl/des.h>
 
-#define TABLE_SIZE 1000000 // This is a hypothetical size, you can adjust it
+#define TABLE_SIZE 1000000 // Este es un tamaño hipotético, puedes ajustarlo
 
 struct rainbow_entry
 {
     long key;
-    unsigned char encrypted[8]; // assuming 64-bit DES block size
+    unsigned char encrypted[8]; // Suponemos un tamaño de bloque DES de 64 bits
 };
 
 struct rainbow_entry table[TABLE_SIZE];
 
+// Función para construir la tabla de arcoíris
 void build_rainbow_table()
 {
-    char plaintext[] = "HELLO"; // This is a constant plaintext used to build the table
+    char plaintext[] = "HELLO"; // Este es un texto plano constante utilizado para construir la tabla
 
     for (long i = 0; i < TABLE_SIZE; ++i)
     {
         table[i].key = i;
         encrypt(i, plaintext, strlen(plaintext));
-        memcpy(table[i].encrypted, plaintext, 8); // Store the first 8 bytes (64 bits)
+        memcpy(table[i].encrypted, plaintext, 8); // Almacenamos los primeros 8 bytes (64 bits)
     }
 }
 
+// Función para buscar en la tabla de arcoíris
 long lookup_rainbow_table(unsigned char *encrypted_value)
 {
     for (long i = 0; i < TABLE_SIZE; ++i)
@@ -36,9 +38,10 @@ long lookup_rainbow_table(unsigned char *encrypted_value)
             return table[i].key;
         }
     }
-    return -1; // Not found in the table
+    return -1; // No encontrado en la tabla
 }
 
+// Función para descifrar utilizando la clave DES
 void decrypt(long key, char *ciph, int len)
 {
     DES_key_schedule schedule;
@@ -48,6 +51,7 @@ void decrypt(long key, char *ciph, int len)
     DES_ecb_encrypt((DES_cblock *)ciph, (DES_cblock *)ciph, &schedule, DES_DECRYPT);
 }
 
+// Función para cifrar utilizando la clave DES
 void encrypt(long key, char *ciph, int len)
 {
     DES_key_schedule schedule;
@@ -57,6 +61,7 @@ void encrypt(long key, char *ciph, int len)
     DES_ecb_encrypt((DES_cblock *)ciph, (DES_cblock *)ciph, &schedule, DES_ENCRYPT);
 }
 
+// Función para contar palabras en un texto
 int count_words(const char *text)
 {
     int count = 0;
@@ -79,7 +84,7 @@ int count_words(const char *text)
     return count;
 }
 
-// Devuelve una palabra aleatoria de la cadena
+// Función para obtener una palabra aleatoria de un texto
 char *random_word(char *text)
 {
     int n_words = count_words(text);
@@ -122,7 +127,7 @@ char *random_word(char *text)
 int main(int argc, char *argv[])
 {
     int N, id;
-    long upper = (1L << 56); // upper bound DES keys 2^56
+    long upper = (1L << 56); // Límite superior de las claves DES (2^56)
     long mylower, myupper;
     MPI_Status st;
     MPI_Request req;
@@ -132,31 +137,30 @@ int main(int argc, char *argv[])
 
     if (argc < 3)
     {
-        printf("Usage: %s <key> <file.txt>\n", argv[0]);
+        printf("Uso: %s <clave> <archivo.txt>\n", argv[0]);
         exit(1);
     }
 
     file = fopen(argv[2], "r");
     if (file == NULL)
     {
-        printf("Error opening file\n");
+        printf("Error al abrir el archivo\n");
         exit(1);
     }
     fgets(cipher, sizeof(cipher), file);
     fclose(file);
 
-    cipher[strcspn(cipher, "\n")] = 0; // Elimina el salto de línea
+    cipher[strcspn(cipher, "\n")] = 0; // Eliminar el salto de línea
 
-    long key = strtol(argv[1], NULL, 10); // convierte la cadena de la clave a long
+    long key = strtol(argv[1], NULL, 10); // Convierte la cadena de la clave a long
 
-    // Build the rainbow table
+    // Construir la tabla de arcoíris
     build_rainbow_table();
 
     int flag;
     int ciphlen = strlen(cipher);
 
-    // Hacer que text sea el nuevo cipher
-
+    // empezar MPI
     MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Init(&argc, &argv);
     start = MPI_Wtime();
@@ -173,23 +177,27 @@ int main(int argc, char *argv[])
         myupper = upper;
     }
 
+    // buscar en la tabla rainbow
     long found_key = lookup_rainbow_table((unsigned char *)cipher);
 
-    if (found_key != -1)
+    if (found_key != -1) // si se encontro
     {
-        printf("Node %d found the key: %li\n", id, found_key);
+        printf("Nodo %d encontró la clave: %li\n", id, found_key);
         decrypt(found_key, cipher, ciphlen);
-        printf("Decrypted text: %s\n", cipher);
+        printf("Texto descifrado: %s\n", cipher);
     }
-    else
+    else // en caso no se encontro
     {
-        printf("Node %d did not find the key in the rainbow table\n", id);
+        printf("Nodo %d no encontró la clave en la tabla de arcoíris\n", id);
     }
 
+    // imprimir tiempo de ejecucion
     end = MPI_Wtime();
     if (id == 0)
     {
         printf("El programa MPI tardó %f segundos en ejecutarse.\n", end - start);
     }
+
+    // finalizar MPI
     MPI_Finalize();
 }
