@@ -1,6 +1,4 @@
-// bruteforce2_dd.c
-// nota: el key usado es bastante pequeño, cuando sea random speedup variará
-
+// bruteforce_binary_search.c
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -100,23 +98,31 @@ char *random_word(char *text)
     return word;
 }
 
-// Función para dividir dinámicamente las claves entre los nodos MPI
-void dynamic_key_division(int id, int N, long upper, long *mylower, long *myupper)
+// Función para realizar una búsqueda binaria en un rango de claves
+long binarySearchForCipherKey(long left, long right, char *ciph, int ciphlen, char *search)
 {
-    long chunk_size = upper / N;
-    *mylower = id * chunk_size;
-    *myupper = *mylower + chunk_size - 1;
-    if (id == N - 1)
+    while (left <= right)
     {
-        *myupper = upper;
+        long mid = left + (right - left) / 2;
+
+        if (tryKey(mid, ciph, ciphlen, search))
+        {
+            return mid;
+        }
+
+        if (mid < right)
+            left = mid + 1;
+        else
+            right = mid - 1;
     }
+
+    return -1; // Retorna -1 si la clave no se encuentra en el rango
 }
 
 int main(int argc, char *argv[])
 {
     int N, id;
-    long upper = (1L << 56); // Límite superior de claves DES 2^56
-    long mylower, myupper;
+    long upper = (1L << 56); // Límite superior de claves DES (2^56)
     MPI_Status st;
     MPI_Request req;
     FILE *file;
@@ -161,26 +167,20 @@ int main(int argc, char *argv[])
 
     MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
 
-    // Realiza la división dinámica de claves otorgando un rango en el cual buscar a cada nodo
-    dynamic_key_division(id, N, upper, &mylower, &myupper);
+    long mylower = (id * upper) / N;
+    long myupper = ((id + 1) * upper) / N;
 
-    // Realiza la búsqueda de la clave
-    for (long i = mylower; i < myupper; ++i)
+    // Realiza la búsqueda de la clave utilizando la búsqueda binaria
+    long result = binarySearchForCipherKey(mylower, myupper - 1, (char *)cipher, ciphlen, search);
+
+    if (result != -1)
     {
-        MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
-        if (flag)
-            break;
+        found = result;
 
-        if (tryKey(i, (char *)cipher, ciphlen, search))
+        // Notifica a otros nodos
+        for (int node = 0; node < N; node++)
         {
-            found = i;
-
-            // Notifica a otros nodos
-            for (int node = 0; node < N; node++)
-            {
-                MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
-            }
-            break;
+            MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
         }
     }
 
