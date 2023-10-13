@@ -15,9 +15,3 @@
 - mpicc bruteforce2.c -o bruteforce2 -lssl -lcrypto
 - mpirun -np 4 ./bruteforce2 <key> <text_input.txt>
 - mpirun -np 4 ./bruteforce2 18014398509481984L input.txt
-
-### bruteforce2_rainbow.c
-
-- mpicc -o rainbow rainbow.c -lcrypto
-- mpirun -np <number_of_processes> ./rainbow <key> <file.txt>
-- mpirun -np 4 ./rainbow 123456 input.txt
