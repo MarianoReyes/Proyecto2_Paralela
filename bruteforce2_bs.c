@@ -98,25 +98,26 @@ char *random_word(char *text)
     return word;
 }
 
-// Función para realizar una búsqueda binaria en un rango de claves
-long binarySearchForCipherKey(long left, long right, char *ciph, int ciphlen, char *search)
+// Función para buscar la clave utilizando búsqueda binaria
+long binarySearchKey(long lower, long upper, char *ciph, int len, char *search)
 {
-    while (left <= right)
+    while (lower <= upper)
     {
-        long mid = left + (right - left) / 2;
-
-        if (tryKey(mid, ciph, ciphlen, search))
+        long mid = (lower + upper) / 2;
+        if (tryKey(mid, ciph, len, search))
         {
             return mid;
         }
-
-        if (mid < right)
-            left = mid + 1;
+        if (tryKey(mid, ciph, len, search) < 0)
+        {
+            lower = mid + 1;
+        }
         else
-            right = mid - 1;
+        {
+            upper = mid - 1;
+        }
     }
-
-    return -1; // Retorna -1 si la clave no se encuentra en el rango
+    return -1; // Clave no encontrada
 }
 
 int main(int argc, char *argv[])
@@ -154,6 +155,7 @@ int main(int argc, char *argv[])
 
     int flag;
     int ciphlen = strlen(cipher);
+    long mylower, myupper; // Declarar mylower y myupper
 
     MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Init(&argc, &argv);
@@ -161,8 +163,15 @@ int main(int argc, char *argv[])
     MPI_Comm_size(comm, &N);
     MPI_Comm_rank(comm, &id);
 
+    int range_per_node = upper / N;
+
+    mylower = (upper / N) * id;
+    myupper = (upper / N) * (id + 1) - 1;
+
     if (id == 0)
     {
+        printf("Key: %li\n", key);
+        printf("Search: %s\n", search);
         printf("Encrypted text: ");
         for (int i = 0; i < strlen(cipher); i++)
         {
@@ -170,45 +179,40 @@ int main(int argc, char *argv[])
         }
         printf("\n");
     }
+    if (id == N - 1)
+    {
+        myupper = upper;
+    }
 
     long found = 0;
 
     MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
+    printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
 
-    long mylower = (id * upper) / N;
-    long myupper = ((id + 1) * upper) / N;
+    found = binarySearchKey(mylower, myupper, cipher, ciphlen, search);
 
-    // Realiza la búsqueda de la clave utilizando la búsqueda binaria
-    long result = binarySearchForCipherKey(mylower, myupper - 1, (char *)cipher, ciphlen, search);
-
-    if (result != -1)
+    if (found >= 0)
     {
-        found = result;
+        printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
 
-        // Notifica a otros nodos
         for (int node = 0; node < N; node++)
         {
             MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
         }
     }
 
-    // El nodo maestro maneja el resultado
     if (id == 0)
     {
         MPI_Wait(&req, &st);
-        if (found > 0)
-        {
-            decrypt(found, cipher, ciphlen);
-            printf("Clave encontrada: %li\n", found);
-            printf("Término buscado: %s\n", search);
-            printf("Texto descifrado: %s\n", cipher);
-        }
-        else
-        {
-            printf("Clave no encontrada.\n");
-        }
-        end = MPI_Wtime();
-        printf("El programa MPI tomó %f segundos en ejecutarse.\n", end - start);
+        decrypt(found, (char *)cipher, ciphlen);
+        printf("%li %s\n", found, cipher);
+    }
+
+    end = MPI_Wtime();
+
+    if (id == 0)
+    {
+        printf("El programa MPI tardó %f segundos en ejecutarse.\n", end - start);
     }
 
     MPI_Finalize();
