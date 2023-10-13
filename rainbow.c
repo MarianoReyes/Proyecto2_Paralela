@@ -18,7 +18,7 @@ struct rainbow_entry table[TABLE_SIZE];
 // Función para construir la tabla de arcoíris
 void build_rainbow_table()
 {
-    char plaintext[] = "HELLO"; // Este es un texto plano constante utilizado para construir la tabla
+    char plaintext[] = "podemos"; // Este es un texto plano constante utilizado para construir la tabla
 
     for (long i = 0; i < TABLE_SIZE; ++i)
     {
