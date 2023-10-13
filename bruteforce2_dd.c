@@ -100,12 +100,11 @@ char *random_word(char *text)
     return word;
 }
 
-// unsigned char cipher[] = {110, 171, 24, 144, 61, 251, 15, 43, 97, 114, 116, 101, 32, 49};
-
 int main(int argc, char *argv[])
-{ // char **argv
+{
+    // atributos iniciales
     int N, id;
-    long upper = (1L << 56); // upper bound DES keys 2^56
+    long upper = (1L << 56);
     long mylower, myupper;
     MPI_Status st;
     MPI_Request req;
@@ -115,52 +114,55 @@ int main(int argc, char *argv[])
 
     if (argc < 3)
     {
+        // Verifica si se proporcionaron suficientes argumentos en la línea de comandos.
+        // Deben proporcionarse al menos 3 argumentos: el nombre del programa, la clave y el archivo de texto.
         printf("Usage: %s <key> <file.txt>\n", argv[0]);
-        exit(1);
+        exit(1); // Sale del programa si no se proporcionaron suficientes argumentos.
     }
 
     file = fopen(argv[2], "r");
     if (file == NULL)
     {
+        // Abre el archivo especificado en modo lectura ("r").
+        // Si no puede abrir el archivo, muestra un mensaje de error y sale del programa.
         printf("Error opening file\n");
         exit(1);
     }
-    fgets(cipher, sizeof(cipher), file);
-    fclose(file);
+    fgets(cipher, sizeof(cipher), file); // Lee el contenido del archivo y lo almacena en la variable 'cipher'.
+    fclose(file);                        // Cierra el archivo después de leerlo.
 
-    cipher[strcspn(cipher, "\n")] = 0; // Elimina el salto de línea
-    // printf("Texto original: %s\n", cipher);
+    cipher[strcspn(cipher, "\n")] = 0; // Elimina cualquier carácter de salto de línea al final del texto.
 
-    long key = strtol(argv[1], NULL, 10); // convierte la cadena de la clave a long
+    long key = strtol(argv[1], NULL, 10); // Convierte la clave (argv[1]) en un número largo.
 
-    char *word = random_word(cipher);
-    char *search = random_word(cipher);
-    // char search[] = " Parte ";
+    char *word = random_word(cipher);   // Obtiene una palabra aleatoria del texto.
+    char *search = random_word(cipher); // Obtiene otra palabra aleatoria del texto.
 
-    // encriptar el texto con la clave
-    encrypt(key, cipher, strlen(cipher));
+    encrypt(key, cipher, strlen(cipher)); // Encripta el texto con la clave proporcionada.
 
     int flag;
-    int ciphlen = strlen(cipher);
-
-    // Hacer que text sea el nuevo cipher
+    int ciphlen = strlen(cipher); // Obtiene la longitud del texto encriptado.
 
     MPI_Comm comm = MPI_COMM_WORLD;
-    MPI_Init(&argc, &argv);
-    start = MPI_Wtime();
-    MPI_Comm_size(comm, &N);
-    MPI_Comm_rank(comm, &id);
+    MPI_Init(&argc, &argv); // Inicializa MPI y obtiene el número de nodos y el ID de cada nodo.
+    start = MPI_Wtime();    // Registra el tiempo de inicio de la ejecución.
 
-    int range_per_node = upper / N;
+    MPI_Comm_size(comm, &N);  // Obtiene el número total de nodos.
+    MPI_Comm_rank(comm, &id); // Obtiene el ID (rango) del nodo actual.
 
-    mylower = (upper / N) * id;
-    myupper = (upper / N) * (id + 1) - 1;
-    // printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
+    int range_per_node = upper / N; // Calcula el rango de claves a procesar por cada nodo.
+
+    mylower = (upper / N) * id;           // Establece el límite inferior del rango de claves para el nodo actual.
+    myupper = (upper / N) * (id + 1) - 1; // Establece el límite superior del rango de claves para el nodo actual.
+
+    if (id == N - 1)
+    {
+        // Si es el último nodo, ajusta el límite superior al valor máximo de claves (upper).
+        myupper = upper;
+    }
 
     if (id == 0)
     {
-        printf("Key: %li\n", key);
-        printf("Search: %s\n", search);
         printf("Encrypted text: ");
         for (int i = 0; i < strlen(cipher); i++)
         {
@@ -168,35 +170,59 @@ int main(int argc, char *argv[])
         }
         printf("\n");
     }
-    if (id == N - 1)
-    {
 
-        myupper = upper;
-    }
-    long found = 0;
+    long found = 0; // Variable para almacenar la clave encontrada.
     MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
-    printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
+    // Inicia una recepción asincrónica para recibir una clave encontrada desde cualquier otro nodo.
+    printf("Node %d: L: %li - U: %li \n", id, mylower, myupper); // Muestra información sobre el rango de claves procesadas por el nodo.
+
     for (long i = mylower; i < myupper; ++i)
     {
-
         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
         if (flag)
-            break;
+            break; // Sale del bucle si se encuentra una clave o se recibe un mensaje de otro nodo.
 
         if (tryKey(i, (char *)cipher, ciphlen, search))
         {
-            found = i;
-            printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
+            found = i;                                                                 // Si se encuentra una clave que desencripta el texto con éxito, almacena la clave.
+            printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found); // Muestra un mensaje de clave encontrada.
 
-            // printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
             for (int node = 0; node < N; node++)
             {
-                // printf("Node %d: AVISANDO NODE %d - FOUND - %li\n", id, node, found);
                 MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
+                // Envía la clave encontrada a todos los demás nodos.
             }
-            break;
+            break; // Sale del bucle después de encontrar una clave.
         }
     }
+
+    // Implementación de división dinámica
+    if (found == 0)
+    {
+        long task = mylower;
+        while (found == 0)
+        {
+            MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+            if (flag)
+                break;
+
+            if (tryKey(task, (char *)cipher, ciphlen, search))
+            {
+                found = task;
+                printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
+
+                for (int node = 0; node < N; node++)
+                {
+                    MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
+                }
+            }
+
+            task++;
+            if (task >= myupper)
+                task = mylower;
+        }
+    }
+
     if (id == 0)
     {
         MPI_Wait(&req, &st);

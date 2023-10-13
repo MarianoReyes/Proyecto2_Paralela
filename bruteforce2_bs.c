@@ -1,5 +1,4 @@
-// bruteforce.c
-// nota: el key usado es bastante pequenio, cuando sea random speedup variara
+// bruteforce_binary_search.c
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +6,7 @@
 #include <unistd.h>
 #include <openssl/des.h>
 
-// Función para desencriptar datos utilizando DES
+// Función para descifrar utilizando el algoritmo DES
 void decrypt(long key, char *ciph, int len)
 {
     DES_key_schedule schedule;
@@ -17,7 +16,7 @@ void decrypt(long key, char *ciph, int len)
     DES_ecb_encrypt((DES_cblock *)ciph, (DES_cblock *)ciph, &schedule, DES_DECRYPT);
 }
 
-// Función para encriptar datos utilizando DES
+// Función para cifrar utilizando el algoritmo DES
 void encrypt(long key, char *ciph, int len)
 {
     DES_key_schedule schedule;
@@ -27,7 +26,7 @@ void encrypt(long key, char *ciph, int len)
     DES_ecb_encrypt((DES_cblock *)ciph, (DES_cblock *)ciph, &schedule, DES_ENCRYPT);
 }
 
-// Función para probar una clave en el cifrado
+// Función para probar una clave y buscar una subcadena en el texto descifrado
 int tryKey(long key, char *ciph, int len, char *search)
 {
     char temp[len + 1];
@@ -37,7 +36,6 @@ int tryKey(long key, char *ciph, int len, char *search)
     return strstr((char *)temp, search) != NULL;
 }
 
-// Función para contar palabras en un texto
 int count_words(const char *text)
 {
     int count = 0;
@@ -60,7 +58,7 @@ int count_words(const char *text)
     return count;
 }
 
-// Función para obtener una palabra aleatoria de un texto
+// Devuelve una palabra aleatoria de la cadena
 char *random_word(char *text)
 {
     int n_words = count_words(text);
@@ -100,50 +98,66 @@ char *random_word(char *text)
     return word;
 }
 
-// unsigned char cipher[] = {110, 171, 24, 144, 61, 251, 15, 43, 97, 114, 116, 101, 32, 49};
+// Función para buscar la clave utilizando búsqueda binaria
+long binarySearchKey(long lower, long upper, char *ciph, int len, char *search)
+{
+    while (lower <= upper)
+    {
+        long mid = (lower + upper) / 2;
+        if (tryKey(mid, ciph, len, search))
+        {
+            return mid;
+        }
+        if (tryKey(mid, ciph, len, search) < 0)
+        {
+            lower = mid + 1;
+        }
+        else
+        {
+            upper = mid - 1;
+        }
+    }
+    return -1; // Clave no encontrada
+}
 
 int main(int argc, char *argv[])
-{ // char **argv
+{
     int N, id;
-    long upper = (1L << 56); // upper bound DES keys 2^56
-    long mylower, myupper;
+    long upper = (1L << 56); // Límite superior de claves DES (2^56)
     MPI_Status st;
     MPI_Request req;
     FILE *file;
     char cipher[1000];
     double start, end;
 
+    // uso
     if (argc < 3)
     {
-        printf("Usage: %s <key> <file.txt>\n", argv[0]);
+        printf("Uso: %s <clave> <archivo.txt>\n", argv[0]);
         exit(1);
     }
 
+    // lectura de archivo
     file = fopen(argv[2], "r");
     if (file == NULL)
     {
-        printf("Error opening file\n");
+        printf("Error al abrir el archivo\n");
         exit(1);
     }
     fgets(cipher, sizeof(cipher), file);
     fclose(file);
 
-    cipher[strcspn(cipher, "\n")] = 0; // Elimina el salto de línea
-    // printf("Texto original: %s\n", cipher);
+    cipher[strcspn(cipher, "\n")] = 0;    // Elimina el salto de línea
+    long key = strtol(argv[1], NULL, 10); // Convierte la cadena de clave a long
 
-    long key = strtol(argv[1], NULL, 10); // convierte la cadena de la clave a long
-
-    char *word = random_word(cipher);
     char *search = random_word(cipher);
-    // char search[] = " Parte ";
 
-    // encriptar el texto con la clave
+    // Cifra el texto con la clave
     encrypt(key, cipher, strlen(cipher));
 
     int flag;
     int ciphlen = strlen(cipher);
-
-    // Hacer que text sea el nuevo cipher
+    long mylower, myupper; // Declarar mylower y myupper
 
     MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Init(&argc, &argv);
@@ -155,8 +169,8 @@ int main(int argc, char *argv[])
 
     mylower = (upper / N) * id;
     myupper = (upper / N) * (id + 1) - 1;
-    // printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
 
+    // impresion de texto cifrado
     if (id == 0)
     {
         printf("Key: %li\n", key);
@@ -170,43 +184,41 @@ int main(int argc, char *argv[])
     }
     if (id == N - 1)
     {
-
         myupper = upper;
     }
+
     long found = 0;
+
     MPI_Irecv(&found, 1, MPI_LONG, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &req);
     printf("Node %d: L: %li - U: %li \n", id, mylower, myupper);
-    for (long i = mylower; i < myupper; ++i)
+
+    // aqui se realiza la busqueda binaria
+    found = binarySearchKey(mylower, myupper, cipher, ciphlen, search);
+
+    if (found >= 0)
     {
+        printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
 
-        MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
-        if (flag)
-            break;
-
-        if (tryKey(i, (char *)cipher, ciphlen, search))
+        for (int node = 0; node < N; node++)
         {
-            found = i;
-            printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
-
-            // printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
-            for (int node = 0; node < N; node++)
-            {
-                // printf("Node %d: AVISANDO NODE %d - FOUND - %li\n", id, node, found);
-                MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
-            }
-            break;
+            MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
         }
     }
+
+    // nodo maestro se encarga
     if (id == 0)
     {
         MPI_Wait(&req, &st);
         decrypt(found, (char *)cipher, ciphlen);
         printf("%li %s\n", found, cipher);
     }
+
     end = MPI_Wtime();
+
     if (id == 0)
     {
         printf("El programa MPI tardó %f segundos en ejecutarse.\n", end - start);
     }
+
     MPI_Finalize();
 }
