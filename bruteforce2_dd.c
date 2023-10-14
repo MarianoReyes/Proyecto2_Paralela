@@ -133,7 +133,14 @@ int main(int argc, char *argv[])
 
     cipher[strcspn(cipher, "\n")] = 0; // Elimina cualquier carácter de salto de línea al final del texto.
 
-    long key = strtol(argv[1], NULL, 10); // Convierte la clave (argv[1]) en un número largo.
+    // Convertir la clave en un número largo y comprobar errores y comprobar que sea un numero
+    char *endptr;
+    long key = strtol(argv[1], &endptr, 10);
+    if (*endptr != '\0' || endptr == argv[1]) // Si la conversión no consumió toda la cadena o no consumió nada
+    {
+        fprintf(stderr, "Error: La clave proporcionada no es un número válido.\n");
+        exit(1);
+    }
 
     char *word = random_word(cipher);   // Obtiene una palabra aleatoria del texto.
     char *search = random_word(cipher); // Obtiene otra palabra aleatoria del texto.
