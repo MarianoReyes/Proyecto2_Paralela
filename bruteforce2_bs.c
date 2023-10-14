@@ -180,19 +180,29 @@ int main(int argc, char *argv[])
     }
 
     // Realizar la búsqueda binaria
+
+    // Inicializa un bucle que realiza una búsqueda binaria en el rango de claves asignado a este nodo.
     while (mylower <= myupper && found == -1)
     {
+        // Calcula el punto medio del rango actual.
         long mid = (mylower + myupper) / 2;
+
+        // Intenta la clave del punto medio en el cifrado para verificar si es la clave correcta.
         if (tryKey(mid, (char *)cipher, ciphlen, search))
         {
+            // Si la clave en el punto medio desencripta con éxito el texto, establece 'found' en el valor de 'mid'.
             found = mid;
         }
         else if (key < mid)
         {
+            // Si la clave a buscar es menor que el valor en el punto medio,
+            // ajusta el límite superior del rango para buscar en la mitad inferior del rango actual.
             myupper = mid - 1;
         }
         else
         {
+            // Si la clave a buscar es mayor que el valor en el punto medio,
+            // ajusta el límite inferior del rango para buscar en la mitad superior del rango actual.
             mylower = mid + 1;
         }
     }

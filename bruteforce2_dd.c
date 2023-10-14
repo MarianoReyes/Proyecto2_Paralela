@@ -204,26 +204,36 @@ int main(int argc, char *argv[])
     }
 
     // Implementación de división dinámica
+
+    // Verifica si se ha encontrado la solución en este nodo.
     if (found == 0)
     {
+        // Inicializa una tarea con el valor más bajo asignado a este nodo.
         long task = mylower;
+
+        // Realiza un bucle hasta que se encuentre la solución.
         while (found == 0)
         {
+            // Verifica si hay una solicitud de finalización.
             MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
             if (flag)
                 break;
 
+            // Intenta la clave en la tarea actual.
             if (tryKey(task, (char *)cipher, ciphlen, search))
             {
+                // Si se encuentra la solución, actualiza la variable "found".
                 found = task;
                 printf("Node %d: %li - %li - FOUND - %li\n", id, mylower, myupper, found);
 
+                // Notifica a todos los nodos del clúster sobre la solución encontrada.
                 for (int node = 0; node < N; node++)
                 {
                     MPI_Send(&found, 1, MPI_LONG, node, 0, MPI_COMM_WORLD);
                 }
             }
 
+            // Incrementa la tarea actual y vuelve a comenzar si se supera el valor más alto asignado.
             task++;
             if (task >= myupper)
                 task = mylower;
